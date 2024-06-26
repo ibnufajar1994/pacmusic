@@ -1,57 +1,45 @@
-name: Deploy Staging 🚀
+name: Dev Testing 🔎
 
 on:
-  push:
+  pull_request:
     branches: [ "main" ]
 
 jobs:
-  deploy-staging:
-    name: Deploy to staging server
+  build-testing:
+    name: Build and Testing
     runs-on: ubuntu-latest
-    environment: staging
-
+    environment:  dev-testing
     steps:
-      - name: Execute deployment command
-        uses: appleboy/ssh-action@v1.0.3
-        env:
-          APP_STG_PATH: ${{ vars.APP_STG_PATH }}
-          GIT_URL: ${{ secrets.GIT_URL }}
-          MINIO_STG_ENDPOINT: ${{ secrets.MINIO_STG_ENDPOINT }}
-          MINIO_STG_ACCESS_KEY: ${{ secrets.MINIO_STG_ACCESS_KEY }}
-          MINIO_STG_SECRET_KEY: ${{ secrets.MINIO_STG_SECRET_KEY }}
-          APP_STG_PORT: ${{ secrets.APP_STG_PORT }}
-         
+      - name: Checkout repository
+        uses: actions/checkout@v2
       
+      - name: Create .env file
+        run: |
+          echo "MINIO_DEV_ENDPOINT=${{ secrets.MINIO_DEV_ENDPOINT }}" >> .env
+          echo "MINIO_DEV_ACCESS_KEY=${{ secrets.MINIO_DEV_ACCESS_KEY }}" >> .env
+          echo "MINIO_DEV_SECRET_KEY=${{ secrets.MINIO_DEV_SECRET_KEY }}" >> .env
 
-        with:
-          host: ${{ secrets.SSH_HOST_STAGING }}
-          username: ${{ secrets.SSH_USER_NAME_STAGING }}
-          key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
-          envs: APP_STG_PATH, GIT_URL, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY, APP_STG_PORT
-          script: |
+      - name: Build and Run Container
+        run: |
+          sudo docker compose up --build --detach pacmusic-dev
 
-            if [[ -d "${APP_STG_PATH}" ]]; then 
-              cd ${APP_STG_PATH}
-              sudo docker compose down
-              git pull --rebase
-            else
-              ssh-keyscan github.com > ~/.ssh/known_hosts
-              git clone $GIT_URL ${APP_STG_PATH}
-              cd ${APP_STG_PATH}
-            fi
+      - name: List Docker Containers
+        run: |
+          sudo docker ps
 
-            # If there are any envars update
-            echo "MINIO_STG_ENDPOINT" >> .env
-            echo "MINIO_STG_ACCESS_KEY" >> .env
-            echo "MINIO_STG_SECRET_KEY" >> .env
-            echo "APP_STG_PORT" >> .env
-            
-            
+      - name: Check Docker Logs
+        run: |
+          sudo docker logs pacmusic-dev
 
-            # Run app
-            sudo docker compose up --build --detach pacmusic-stg
-      
       - name: Hit Endpoint
         run: |
-          sleep 20
-          curl  ${{ secrets.STG_URL }}
+          sleep 10
+          curl http://localhost:5000
+          
+      - name: Install testing requirements
+        run: |
+          pip install -r test/requirements.txt
+
+      - name: Run test
+        run: |
+          python3 test/test.py
