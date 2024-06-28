@@ -47,10 +47,10 @@ jobs:
             fi
 
             # If there are any envars update
+            echo "APP_PROD_PORT" > .env
             echo "MINIO_STG_ENDPOINT" >> .env
             echo "MINIO_STG_ACCESS_KEY" >> .env
             echo "MINIO_STG_SECRET_KEY" >> .env
-            echo "APP_PROD_PORT" >> .env
             echo "APP_IMAGE=${DOCKERHUB_USERNAME}/${APP_NAME}" >> .env
             echo "APP_TAG=$APP_TAG" >> .env
 
