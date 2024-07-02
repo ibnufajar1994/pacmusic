@@ -41,10 +41,10 @@ jobs:
             fi
 
             # If there are any envars update
-            echo "MINIO_STG_ENDPOINT" >> .env
-            echo "MINIO_STG_ACCESS_KEY" >> .env
-            echo "MINIO_STG_SECRET_KEY" >> .env
-            echo "APP_STG_PORT" >> .env
+            echo "MINIO_STG_ENDPOINT"=$"MINIO_STG_ENDPOINT" >> .env
+            echo "MINIO_STG_ACCESS_KEY"=$MINIO_STG_ACCESS_KEY >> .env
+            echo "MINIO_STG_SECRET_KEY=$"MINIO_STG_SECRET_KEY >> .env
+            echo "APP_STG_PORT=$APP_STG_PORT" >> .env
             
             
 
