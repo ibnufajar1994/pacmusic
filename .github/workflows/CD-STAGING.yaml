@@ -14,28 +14,28 @@ jobs:
       - name: Execute deployment command
         uses: appleboy/ssh-action@v1.0.3
         env:
-          APP_STG_PATH: ${{ vars.APP_STG_PATH }}
+          APP_PATH: ${{ vars.APP_PATH }}
           GIT_URL: ${{ secrets.GIT_URL }}
           MINIO_STG_ENDPOINT: ${{ secrets.MINIO_STG_ENDPOINT }}
           MINIO_STG_ACCESS_KEY: ${{ secrets.MINIO_STG_ACCESS_KEY }}
           MINIO_STG_SECRET_KEY: ${{ secrets.MINIO_STG_SECRET_KEY }}
           APP_STG_PORT_1: ${{ secrets.APP_STG_PORT_1 }}
           APP_STG_PORT_2: ${{ secrets.APP_STG_PORT_2 }}
-         
+
         with:
           host: ${{ secrets.SSH_HOST_STAGING }}
           username: ${{ secrets.SSH_USER_NAME_STAGING }}
           key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
-          envs: APP_STG_PATH, GIT_URL, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY, APP_STG_PORT_1, APP_STG_PORT_2
+          envs: APP_PATH, GIT_URL, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY, APP_STG_PORT_1, APP_STG_PORT_2
           script: |
-            if [[ -d "${APP_STG_PATH}" ]]; then 
-              cd ${APP_STG_PATH}
+            if [[ -d "${APP_PATH}" ]]; then 
+              cd ${APP_PATH}
               sudo docker compose down
               git pull origin main
             else
               ssh-keyscan github.com > ~/.ssh/known_hosts
-              git clone $GIT_URL ${APP_STG_PATH}
-              cd ${APP_STG_PATH}
+              git clone $GIT_URL ${APP_PATH}
+              cd ${APP_PATH}
             fi
 
             # If there are any envars update
@@ -44,7 +44,7 @@ jobs:
             echo "MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}" >> .env
             echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}" >> .env
             echo "MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}" >> .env
-            
+
             # Create nginx.conf file
             cat > nginx.conf <<EOL
             events {
@@ -60,7 +60,7 @@ jobs:
                 server {
                     listen 80;
                     server_name stg.pac-app.online;
-                    
+
                     location /.well-known/acme-challenge/ {
                         root /var/www/certbot;
                     }
