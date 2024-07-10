@@ -19,17 +19,15 @@ jobs:
           MINIO_STG_ENDPOINT: ${{ secrets.MINIO_STG_ENDPOINT }}
           MINIO_STG_ACCESS_KEY: ${{ secrets.MINIO_STG_ACCESS_KEY }}
           MINIO_STG_SECRET_KEY: ${{ secrets.MINIO_STG_SECRET_KEY }}
-          APP_STG_PORT: ${{ secrets.APP_STG_PORT }}
+          APP_STG_PORT_1: ${{ secrets.APP_STG_PORT_1 }}
+          APP_STG_PORT_2: ${{ secrets.APP_STG_PORT_2 }}
          
-      
-
         with:
           host: ${{ secrets.SSH_HOST_STAGING }}
           username: ${{ secrets.SSH_USER_NAME_STAGING }}
           key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
-          envs: APP_STG_PATH, GIT_URL, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY, APP_STG_PORT
+          envs: APP_STG_PATH, GIT_URL, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY, APP_STG_PORT_1, APP_STG_PORT_2
           script: |
-
             if [[ -d "${APP_STG_PATH}" ]]; then 
               cd ${APP_STG_PATH}
               sudo docker compose down
@@ -41,18 +39,59 @@ jobs:
             fi
 
             # If there are any envars update
-            echo "APP_STG_PORT=${APP_STG_PORT}" > .env
+            echo "APP_STG_PORT_1=${APP_STG_PORT_1}" > .env
+            echo "APP_STG_PORT_2=${APP_STG_PORT_2}" >> .env
             echo "MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}" >> .env
             echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}" >> .env
             echo "MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}" >> .env
             
-            
-            
+            # Create nginx.conf file
+            cat > nginx.conf <<EOL
+            events {
+                worker_connections 1024;
+            }
+
+            http {
+                upstream staging_servers {
+                    server pacmusic-stg-1:5000;
+                    server pacmusic-stg-2:5000;
+                }
+
+                server {
+                    listen 80;
+                    server_name stg.pac-app.online;
+                    
+                    location /.well-known/acme-challenge/ {
+                        root /var/www/certbot;
+                    }
+
+                    location / {
+                        return 301 https://\$host\$request_uri;
+                    }
+                }
+
+                server {
+                    listen 443 ssl;
+                    server_name stg.pac-app.online;
+
+                    ssl_certificate /etc/letsencrypt/live/stg.pac-app.online/fullchain.pem;
+                    ssl_certificate_key /etc/letsencrypt/live/stg.pac-app.online/privkey.pem;
+
+                    location / {
+                        proxy_pass http://staging_servers;
+                        proxy_set_header Host \$host;
+                        proxy_set_header X-Real-IP \$remote_addr;
+                        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                        proxy_set_header X-Forwarded-Proto \$scheme;
+                    }
+                }
+            }
+            EOL
 
             # Run app
-            sudo docker compose up --build --detach pacmusic-stg
-      
+            sudo docker compose up --build --detach
+
       - name: Hit Endpoint
         run: |
           sleep 20
-          curl  ${{ secrets.STG_URL }}
+          curl https://stg.pac-app.online
