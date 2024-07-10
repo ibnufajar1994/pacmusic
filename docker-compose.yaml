@@ -74,7 +74,6 @@ services:
   #menambahkan service nginx
   nginx:
     image: nginx:latest
-    container_name: nginx
     ports:
       - "80:80"
       - "443:443"
@@ -89,13 +88,13 @@ services:
       - pacmusic-network
 
     #menambahkan service certbot
-    certbot:
-      image: certbot/certbot
-      container_name: certbot
-      volumes:
-        - ./certbot/conf:/etc/letsencrypt
-        - ./certbot/www:/var/www/certbot
-      command: certonly --webroot -w /var/www/certbot --force-renewal --email ibnu.fajar94@outlook.com -d stg.pac-app.online --agree-tos
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    command: certonly --webroot -w /var/www/certbot --force-renewal --email ibnu.fajar94@outlook.com -d stg.pac-app.online --agree-tos
 
 networks:
   pacmusic-network:
