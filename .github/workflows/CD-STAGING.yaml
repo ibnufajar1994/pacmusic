@@ -14,7 +14,7 @@ jobs:
       - name: Execute deployment command
         uses: appleboy/ssh-action@v1.0.3
         env:
-          APP_PATH: ${{ vars.APP_PATH }}
+          APP_PATH: ${{ vars.APP_STG_PATH }}
           GIT_URL: ${{ secrets.GIT_URL }}
           MINIO_STG_ENDPOINT: ${{ secrets.MINIO_STG_ENDPOINT }}
           MINIO_STG_ACCESS_KEY: ${{ secrets.MINIO_STG_ACCESS_KEY }}
@@ -26,9 +26,9 @@ jobs:
           host: ${{ secrets.SSH_HOST_STAGING }}
           username: ${{ secrets.SSH_USER_NAME_STAGING }}
           key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
-          envs: APP_PATH, GIT_URL, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY, APP_STG_PORT_1, APP_STG_PORT_2
+          envs: APP_STG_PATH, GIT_URL, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY, APP_STG_PORT_1, APP_STG_PORT_2
           script: |
-            echo "APP_PATH=${APP_PATH}"
+            echo "APP_STG_PATH=${APP_STG_PATH}"
             echo "GIT_URL=${GIT_URL}"
             echo "MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}"
             echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}"
@@ -36,14 +36,14 @@ jobs:
             echo "APP_STG_PORT_1=${APP_STG_PORT_1}"
             echo "APP_STG_PORT_2=${APP_STG_PORT_2}"
             
-            if [[ -d "${APP_PATH}" ]]; then 
-              cd ${APP_PATH}
+            if [[ -d "${APP_STG_PATH}" ]]; then 
+              cd ${APP_STG_PATH}
               sudo docker compose down
               git pull origin main
             else
               ssh-keyscan github.com > ~/.ssh/known_hosts
-              git clone $GIT_URL ${APP_PATH}
-              cd ${APP_PATH}
+              git clone $GIT_URL ${APP_STG_PATH}
+              cd ${APP_STG_PATH}
             fi
 
             # If there are any envars update
