@@ -46,12 +46,16 @@ jobs:
               cd ${APP_STG_PATH}
             fi
 
-            # If there are any envars update
+            # If there are any env vars update
             echo "APP_STG_PORT_1=${APP_STG_PORT_1}" > .env
             echo "APP_STG_PORT_2=${APP_STG_PORT_2}" >> .env
             echo "MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}" >> .env
             echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}" >> .env
             echo "MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}" >> .env
+
+            # Create required directories
+            mkdir -p nginx/sites-available
+            mkdir -p nginx/sites-enabled
 
             # Create Nginx Dockerfile
             cat > nginx/Dockerfile <<EOL
@@ -113,10 +117,6 @@ jobs:
                 include /etc/nginx/sites-enabled/*;
             }
             EOL
-
-            # Create sites-available directory and configuration files
-            mkdir -p nginx/sites-available
-            mkdir -p nginx/sites-enabled
 
             # Create configuration for stg.pac-app.online
             cat > nginx/sites-available/stg.pac-app.online.conf <<EOL
