@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Execute deployment command
-        uses: appleboy/ssh-action@v0.1.6
+        uses: appleboy/ssh-action@v1.0.3
         env:
           APP_STG_PATH: ${{ vars.APP_STG_PATH }}
           GIT_URL: ${{ secrets.GIT_URL }}
