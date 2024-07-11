@@ -28,6 +28,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
           envs: APP_PATH, GIT_URL, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY, APP_STG_PORT_1, APP_STG_PORT_2
           script: |
+            echo "APP_PATH=${APP_PATH}"
+            echo "GIT_URL=${GIT_URL}"
+            echo "MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}"
+            echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}"
+            echo "MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}"
+            echo "APP_STG_PORT_1=${APP_STG_PORT_1}"
+            echo "APP_STG_PORT_2=${APP_STG_PORT_2}"
+            
             if [[ -d "${APP_PATH}" ]]; then 
               cd ${APP_PATH}
               sudo docker compose down
