@@ -183,10 +183,23 @@ jobs:
             }
             EOL
 
-            # Run app
+            # Run Certbot to obtain certificates
+            sudo docker compose run certbot
+
+            # Run Nginx and other services
             sudo docker compose up pacmusic-stg-1 pacmusic-stg-2 nginx --build --detach
 
       - name: Hit Endpoint
         run: |
           sleep 20
+          nslookup stg.pac-app.online
           curl https://stg.pac-app.online
+          
+      - name: Check Nginx Logs
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST_STAGING }}
+          username: ${{ secrets.SSH_USER_NAME_STAGING }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
+          script: |
+            docker logs $(docker ps -q --filter "name=nginx")
