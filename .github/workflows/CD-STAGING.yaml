@@ -53,51 +53,139 @@ jobs:
             echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}" >> .env
             echo "MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}" >> .env
 
+            # Create Nginx Dockerfile
+            cat > nginx/Dockerfile <<EOL
+            # Menggunakan image nginx sebagai dasar
+            FROM nginx:latest
+
+            # Menyalin file nginx.conf ke dalam container
+            COPY nginx.conf /etc/nginx/nginx.conf
+
+            # Menyalin direktori sites-available dan sites-enabled ke dalam container
+            COPY sites-available /etc/nginx/sites-available
+            COPY sites-enabled /etc/nginx/sites-enabled
+
+            # Menyalin skrip init-nginx.sh ke dalam container
+            COPY init-nginx.sh /init-nginx.sh
+
+            # Memberikan izin eksekusi untuk skrip init-nginx.sh
+            RUN chmod +x /init-nginx.sh
+
+            # Menjalankan skrip init-nginx.sh saat container dijalankan
+            ENTRYPOINT ["/init-nginx.sh"]
+            EOL
+
+            # Create init-nginx.sh script
+            cat > nginx/init-nginx.sh <<EOL
+            #!/bin/sh
+
+            # Path to the DH parameters file
+            DHPARAMS_PATH="/etc/ssl/certs/dhparam.pem"
+
+            # Check if DH parameters file already exists
+            if [ ! -f "$DHPARAMS_PATH" ]; then
+              echo "Creating DH parameters file..."
+              openssl dhparam -out "$DHPARAMS_PATH" 2048
+            else
+              echo "DH parameters file already exists."
+            fi
+
+            # Enable sites by creating symlinks to sites-enabled
+            ln -s /etc/nginx/sites-available/stg.pac-app.online.conf /etc/nginx/sites-enabled/
+
+            # Start Nginx
+            nginx -g "daemon off;"
+            EOL
+
             # Create nginx.conf file
-            cat > nginx.conf <<EOL
+            cat > nginx/nginx.conf <<EOL
             events {
                 worker_connections 1024;
             }
 
             http {
-                upstream staging_servers {
-                    server pacmusic-stg-1:5000;
-                    server pacmusic-stg-2:5000;
+                include /etc/nginx/mime.types;
+                default_type application/octet-stream;
+
+                sendfile on;
+                keepalive_timeout 65;
+
+                include /etc/nginx/sites-enabled/*;
+            }
+            EOL
+
+            # Create sites-available directory and configuration files
+            mkdir -p nginx/sites-available
+            mkdir -p nginx/sites-enabled
+
+            # Create configuration for stg.pac-app.online
+            cat > nginx/sites-available/stg.pac-app.online.conf <<EOL
+            server {
+                listen 80;
+                server_name stg.pac-app.online;
+
+                location /.well-known/acme-challenge/ {
+                    root /var/www/certbot;
                 }
 
-                server {
-                    listen 80;
-                    server_name stg.pac-app.online;
+                location / {
+                    return 301 https://\$host\$request_uri;
+                }
+            }
 
-                    location /.well-known/acme-challenge/ {
-                        root /var/www/certbot;
-                    }
+            server {
+                listen 443 ssl;
+                server_name stg.pac-app.online;
 
-                    location / {
-                        return 301 https://\$host\$request_uri;
-                    }
+                ssl_certificate /etc/letsencrypt/live/stg.pac-app.online/fullchain.pem;
+                ssl_certificate_key /etc/letsencrypt/live/stg.pac-app.online/privkey.pem;
+                ssl_dhparam /etc/ssl/certs/dhparam.pem;
+
+                location / {
+                    proxy_pass http://staging_servers;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto \$scheme;
+                }
+            }
+            EOL
+
+            # Create configuration for pac-app.online
+            cat > nginx/sites-available/pac-app.online.conf <<EOL
+            server {
+                listen 80;
+                server_name pac-app.online;
+
+                location /.well-known/acme-challenge/ {
+                    root /var/www/certbot;
                 }
 
-                server {
-                    listen 443 ssl;
-                    server_name stg.pac-app.online;
+                location / {
+                    return 301 https://\$host\$request_uri;
+                }
+            }
 
-                    ssl_certificate /etc/letsencrypt/live/stg.pac-app.online/fullchain.pem;
-                    ssl_certificate_key /etc/letsencrypt/live/stg.pac-app.online/privkey.pem;
+            server {
+                listen 443 ssl;
+                server_name pac-app.online;
 
-                    location / {
-                        proxy_pass http://staging_servers;
-                        proxy_set_header Host \$host;
-                        proxy_set_header X-Real-IP \$remote_addr;
-                        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                        proxy_set_header X-Forwarded-Proto \$scheme;
-                    }
+                ssl_certificate /etc/letsencrypt/live/pac-app.online/fullchain.pem;
+                ssl_certificate_key /etc/letsencrypt/live/pac-app.online/privkey.pem;
+                ssl_dhparam /etc/ssl/certs/dhparam.pem;
+
+                location / {
+                    proxy_pass http://production_servers;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto \$scheme;
                 }
             }
             EOL
 
             # Run app
-            sudo docker compose up pacmusic-stg-1 pacmusic-stg-2 --build --detach
+            sudo docker compose up pacmusic-stg-1 pacmusic-stg-2 nginx --build --detach
 
       - name: Hit Endpoint
         run: |
