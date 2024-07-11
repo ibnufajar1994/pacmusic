@@ -56,8 +56,8 @@ jobs:
             mkdir -p nginx/sites-available
             mkdir -p nginx/sites-enabled
 
-            # Create Nginx Dockerfile
-            cat > nginx/Dockerfile <<EOL
+            # Create Nginx Dockerfile for HTTP Challenge
+            cat > nginx/Dockerfile.challenge <<EOL
             # Menggunakan image nginx sebagai dasar
             FROM nginx:latest
 
@@ -68,23 +68,50 @@ jobs:
             COPY sites-available /etc/nginx/sites-available
             COPY sites-enabled /etc/nginx/sites-enabled
 
-            # Menyalin skrip init-nginx.sh ke dalam container
-            COPY init-nginx.sh /init-nginx.sh
+            # Menyalin skrip init-nginx-challenge.sh ke dalam container
+            COPY init-nginx-challenge.sh /init-nginx-challenge.sh
 
-            # Memberikan izin eksekusi untuk skrip init-nginx.sh
-            RUN chmod +x /init-nginx.sh
+            # Memberikan izin eksekusi untuk skrip init-nginx-challenge.sh
+            RUN chmod +x /init-nginx-challenge.sh
 
-            # Menjalankan skrip init-nginx.sh saat container dijalankan
-            ENTRYPOINT ["/init-nginx.sh"]
+            # Menjalankan skrip init-nginx-challenge.sh saat container dijalankan
+            ENTRYPOINT ["/init-nginx-challenge.sh"]
             EOL
 
-            # Create init-nginx.sh script
-            cat > nginx/init-nginx.sh <<EOL
-            #!/bin/sh
+            # Create Nginx Dockerfile for SSL
+            cat > nginx/Dockerfile.ssl <<EOL
+            # Menggunakan image nginx sebagai dasar
+            FROM nginx:latest
 
+            # Menyalin file nginx.conf ke dalam container
+            COPY nginx.conf /etc/nginx/nginx.conf
+
+            # Menyalin direktori sites-available dan sites-enabled ke dalam container
+            COPY sites-available /etc/nginx/sites-available
+            COPY sites-enabled /etc/nginx/sites-enabled
+
+            # Menyalin skrip init-nginx-ssl.sh ke dalam container
+            COPY init-nginx-ssl.sh /init-nginx-ssl.sh
+
+            # Memberikan izin eksekusi untuk skrip init-nginx-ssl.sh
+            RUN chmod +x /init-nginx-ssl.sh
+
+            # Menjalankan skrip init-nginx-ssl.sh saat container dijalankan
+            ENTRYPOINT ["/init-nginx-ssl.sh"]
+            EOL
+
+            # Create init-nginx-challenge.sh script
+            cat > nginx/init-nginx-challenge.sh <<EOL
+            #!/bin/sh
+            # Start Nginx without SSL for Let's Encrypt challenge
+            nginx -g "daemon off;"
+            EOL
+
+            # Create init-nginx-ssl.sh script
+            cat > nginx/init-nginx-ssl.sh <<EOL
+            #!/bin/sh
             # Path to the DH parameters file
             DHPARAMS_PATH="/etc/ssl/certs/dhparam.pem"
-
             # Check if DH parameters file already exists
             if [ ! -f "$DHPARAMS_PATH" ]; then
               echo "Creating DH parameters file..."
@@ -92,10 +119,8 @@ jobs:
             else
               echo "DH parameters file already exists."
             fi
-
             # Enable sites by creating symlinks to sites-enabled
             ln -s /etc/nginx/sites-available/stg.pac-app.online.conf /etc/nginx/sites-enabled/
-
             # Start Nginx
             nginx -g "daemon off;"
             EOL
@@ -105,14 +130,11 @@ jobs:
             events {
                 worker_connections 1024;
             }
-
             http {
                 include /etc/nginx/mime.types;
                 default_type application/octet-stream;
-
                 sendfile on;
                 keepalive_timeout 65;
-
                 include /etc/nginx/sites-enabled/*;
             }
             EOL
@@ -122,24 +144,19 @@ jobs:
             server {
                 listen 80;
                 server_name stg.pac-app.online;
-
                 location /.well-known/acme-challenge/ {
                     root /var/www/certbot;
                 }
-
                 location / {
                     return 301 https://\$host\$request_uri;
                 }
             }
-
             server {
                 listen 443 ssl;
                 server_name stg.pac-app.online;
-
                 ssl_certificate /etc/letsencrypt/live/stg.pac-app.online/fullchain.pem;
                 ssl_certificate_key /etc/letsencrypt/live/stg.pac-app.online/privkey.pem;
                 ssl_dhparam /etc/ssl/certs/dhparam.pem;
-
                 location / {
                     proxy_pass http://pacmusic-stg-1:5000;
                     proxy_set_header Host \$host;
@@ -155,24 +172,19 @@ jobs:
             server {
                 listen 80;
                 server_name pac-app.online;
-
                 location /.well-known/acme-challenge/ {
                     root /var/www/certbot;
                 }
-
                 location / {
                     return 301 https://\$host\$request_uri;
                 }
             }
-
             server {
                 listen 443 ssl;
                 server_name pac-app.online;
-
                 ssl_certificate /etc/letsencrypt/live/pac-app.online/fullchain.pem;
                 ssl_certificate_key /etc/letsencrypt/live/pac-app.online/privkey.pem;
                 ssl_dhparam /etc/ssl/certs/dhparam.pem;
-
                 location / {
                     proxy_pass http://pacmusic-prod-1:5000;
                     proxy_set_header Host \$host;
@@ -182,6 +194,9 @@ jobs:
                 }
             }
             EOL
+
+            # Build and run Nginx for challenge
+            sudo docker compose -f docker-compose.yml -f nginx/Dockerfile.challenge up -d nginx
 
             # Run Certbot to obtain certificates
             sudo docker compose run certbot
@@ -197,8 +212,11 @@ jobs:
               exit 1
             fi
 
-            # Run Nginx and other services
-            sudo docker compose up pacmusic-stg-1 pacmusic-stg-2 nginx --build --detach
+            # Build and run Nginx with SSL
+            sudo docker compose -f docker-compose.yml -f nginx/Dockerfile.ssl up -d nginx
+
+            # Run remaining services
+            sudo docker compose up pacmusic-stg-1 pacmusic-stg-2 --build --detach
 
       - name: Hit Endpoint
         run: |
