@@ -13,7 +13,6 @@ fi
 
 # Enable sites by creating symlinks to sites-enabled
 ln -s /etc/nginx/sites-available/stg.pac-app.online.conf /etc/nginx/sites-enabled/
-ln -s /etc/nginx/sites-available/pac-app.online.conf /etc/nginx/sites-enabled/
 
 # Start Nginx
 nginx -g "daemon off;"
