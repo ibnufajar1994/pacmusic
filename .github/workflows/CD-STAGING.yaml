@@ -39,6 +39,7 @@ jobs:
             if [[ -d "${APP_STG_PATH}" ]]; then 
               cd ${APP_STG_PATH}
               sudo docker compose down
+              git stash
               git pull origin main
             else
               ssh-keyscan github.com > ~/.ssh/known_hosts
