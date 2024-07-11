@@ -11,9 +11,6 @@ jobs:
     environment: staging
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
       - name: Execute deployment command
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -21,31 +18,39 @@ jobs:
           username: ${{ secrets.SSH_USER_NAME_STAGING }}
           key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
           script: |
-            echo "APP_STG_PATH=${{ env.APP_STG_PATH }}"
-            echo "GIT_URL=${{ secrets.GIT_URL }}"
-            echo "MINIO_STG_ENDPOINT=${{ secrets.MINIO_STG_ENDPOINT }}"
-            echo "MINIO_STG_ACCESS_KEY=${{ secrets.MINIO_STG_ACCESS_KEY }}"
-            echo "MINIO_STG_SECRET_KEY=${{ secrets.MINIO_STG_SECRET_KEY }}"
-            echo "APP_STG_PORT_1=${{ secrets.APP_STG_PORT_1 }}"
-            echo "APP_STG_PORT_2=${{ secrets.APP_STG_PORT_2 }}"
+            APP_STG_PATH="${{ vars.APP_STG_PATH }}"
+            GIT_URL="${{ secrets.GIT_URL }}"
+            MINIO_STG_ENDPOINT="${{ secrets.MINIO_STG_ENDPOINT }}"
+            MINIO_STG_ACCESS_KEY="${{ secrets.MINIO_STG_ACCESS_KEY }}"
+            MINIO_STG_SECRET_KEY="${{ secrets.MINIO_STG_SECRET_KEY }}"
+            APP_STG_PORT_1="${{ secrets.APP_STG_PORT_1 }}"
+            APP_STG_PORT_2="${{ secrets.APP_STG_PORT_2 }}"
+
+            echo "APP_STG_PATH=${APP_STG_PATH}"
+            echo "GIT_URL=${GIT_URL}"
+            echo "MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}"
+            echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}"
+            echo "MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}"
+            echo "APP_STG_PORT_1=${APP_STG_PORT_1}"
+            echo "APP_STG_PORT_2=${APP_STG_PORT_2}"
             
-            if [[ -d "${{ env.APP_STG_PATH }}" ]]; then 
-              cd ${{ env.APP_STG_PATH }}
+            if [[ -d "${APP_STG_PATH}" ]]; then 
+              cd ${APP_STG_PATH}
               sudo docker compose down
               git fetch origin main
               git reset --hard origin/main
             else
               ssh-keyscan github.com > ~/.ssh/known_hosts
-              git clone ${{ secrets.GIT_URL }} ${{ env.APP_STG_PATH }}
-              cd ${{ env.APP_STG_PATH }}
+              git clone ${GIT_URL} ${APP_STG_PATH}
+              cd ${APP_STG_PATH}
             fi
 
             # If there are any env vars update
-            echo "APP_STG_PORT_1=${{ secrets.APP_STG_PORT_1 }}" > .env
-            echo "APP_STG_PORT_2=${{ secrets.APP_STG_PORT_2 }}" >> .env
-            echo "MINIO_STG_ENDPOINT=${{ secrets.MINIO_STG_ENDPOINT }}" >> .env
-            echo "MINIO_STG_ACCESS_KEY=${{ secrets.MINIO_STG_ACCESS_KEY }}" >> .env
-            echo "MINIO_STG_SECRET_KEY=${{ secrets.MINIO_STG_SECRET_KEY }}" >> .env
+            echo "APP_STG_PORT_1=${APP_STG_PORT_1}" > .env
+            echo "APP_STG_PORT_2=${APP_STG_PORT_2}" >> .env
+            echo "MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}" >> .env
+            echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}" >> .env
+            echo "MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}" >> .env
 
             # Create required directories
             mkdir -p nginx/sites-available
