@@ -28,7 +28,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_STG_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_STG_SECRET_KEY}
     ports:
-      - "5002:5000"
+      - "${APP_STG_PORT_1}:5000"
     networks:
       - pacmusic-network
 
@@ -42,7 +42,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_STG_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_STG_SECRET_KEY}
     ports:
-      - "5003:5000"
+      - "${APP_STG_PORT_2}:5000"
     networks:
       - pacmusic-network
 
@@ -55,7 +55,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_PROD_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_PROD_SECRET_KEY}
     ports:
-      - "5000:5000"
+      - "${APP_PROD_PORT_1}:5000"
     networks:
       - pacmusic-network
 
@@ -67,7 +67,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_PROD_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_PROD_SECRET_KEY}
     ports:
-      - "5001:5000"
+      - "${APP_PROD_PORT_2}:5000"
     networks:
       - pacmusic-network
 
@@ -82,12 +82,9 @@ services:
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-      - /etc/ssl/certs
     depends_on:
       - pacmusic-stg-1
       - pacmusic-stg-2
-      - pacmusic-prod-1
-      - pacmusic-prod-2
     networks:
       - pacmusic-network
 

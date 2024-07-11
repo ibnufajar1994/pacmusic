@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Execute deployment command
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v0.1.6
         env:
           APP_STG_PATH: ${{ vars.APP_STG_PATH }}
           GIT_URL: ${{ secrets.GIT_URL }}
@@ -26,7 +26,6 @@ jobs:
           host: ${{ secrets.SSH_HOST_STAGING }}
           username: ${{ secrets.SSH_USER_NAME_STAGING }}
           key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
-          envs: APP_STG_PATH, GIT_URL, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY, APP_STG_PORT_1, APP_STG_PORT_2
           script: |
             echo "APP_STG_PATH=${APP_STG_PATH}"
             echo "GIT_URL=${GIT_URL}"
@@ -39,8 +38,8 @@ jobs:
             if [[ -d "${APP_STG_PATH}" ]]; then 
               cd ${APP_STG_PATH}
               sudo docker compose down
-              git stash
-              git pull origin main
+              git fetch origin main
+              git reset --hard origin/main
             else
               ssh-keyscan github.com > ~/.ssh/known_hosts
               git clone $GIT_URL ${APP_STG_PATH}
@@ -143,7 +142,7 @@ jobs:
                 ssl_dhparam /etc/ssl/certs/dhparam.pem;
 
                 location / {
-                    proxy_pass http://staging_servers;
+                    proxy_pass http://pacmusic-stg-1:5000;
                     proxy_set_header Host \$host;
                     proxy_set_header X-Real-IP \$remote_addr;
                     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -176,7 +175,7 @@ jobs:
                 ssl_dhparam /etc/ssl/certs/dhparam.pem;
 
                 location / {
-                    proxy_pass http://production_servers;
+                    proxy_pass http://pacmusic-prod-1:5000;
                     proxy_set_header Host \$host;
                     proxy_set_header X-Real-IP \$remote_addr;
                     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
