@@ -186,6 +186,17 @@ jobs:
             # Run Certbot to obtain certificates
             sudo docker compose run certbot
 
+            # Verifikasi apakah file sertifikat ada
+            if [ ! -f "/etc/letsencrypt/live/stg.pac-app.online/fullchain.pem" ]; then
+              echo "Error: Certificate for stg.pac-app.online not found."
+              exit 1
+            fi
+
+            if [ ! -f "/etc/letsencrypt/live/pac-app.online/fullchain.pem" ]; then
+              echo "Error: Certificate for pac-app.online not found."
+              exit 1
+            fi
+
             # Run Nginx and other services
             sudo docker compose up pacmusic-stg-1 pacmusic-stg-2 nginx --build --detach
 
