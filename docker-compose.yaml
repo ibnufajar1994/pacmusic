@@ -71,7 +71,6 @@ services:
     networks:
       - pacmusic-network
 
-# Nginx
   nginx:
     image: nginx:alpine
     container_name: nginx
@@ -88,7 +87,6 @@ services:
     networks:
       - pacmusic-network
 
-# Certbot
   certbot:
     image: certbot/certbot
     container_name: certbot
