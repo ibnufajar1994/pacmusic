@@ -13,222 +13,53 @@ jobs:
     steps:
       - name: Execute deployment command
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          APP_STG_PATH: ${{ vars.APP_STG_PATH }}
+          GIT_URL: ${{ secrets.GIT_URL }}
+          MINIO_STG_ENDPOINT: ${{ secrets.MINIO_STG_ENDPOINT }}
+          MINIO_STG_ACCESS_KEY: ${{ secrets.MINIO_STG_ACCESS_KEY }}
+          MINIO_STG_SECRET_KEY: ${{ secrets.MINIO_STG_SECRET_KEY }}
+          APP_STG_PORT: ${{ secrets.APP_STG_PORT }}
+         
         with:
           host: ${{ secrets.SSH_HOST_STAGING }}
           username: ${{ secrets.SSH_USER_NAME_STAGING }}
           key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
+          envs: APP_STG_PATH, GIT_URL, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY, APP_STG_PORT
           script: |
-            APP_STG_PATH="${{ vars.APP_STG_PATH }}"
-            GIT_URL="${{ secrets.GIT_URL }}"
-            MINIO_STG_ENDPOINT="${{ secrets.MINIO_STG_ENDPOINT }}"
-            MINIO_STG_ACCESS_KEY="${{ secrets.MINIO_STG_ACCESS_KEY }}"
-            MINIO_STG_SECRET_KEY="${{ secrets.MINIO_STG_SECRET_KEY }}"
-            APP_STG_PORT_1="${{ secrets.APP_STG_PORT_1 }}"
-            APP_STG_PORT_2="${{ secrets.APP_STG_PORT_2 }}"
 
-            echo "APP_STG_PATH=${APP_STG_PATH}"
-            echo "GIT_URL=${GIT_URL}"
-            echo "MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}"
-            echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}"
-            echo "MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}"
-            echo "APP_STG_PORT_1=${APP_STG_PORT_1}"
-            echo "APP_STG_PORT_2=${APP_STG_PORT_2}"
-            
             if [[ -d "${APP_STG_PATH}" ]]; then 
               cd ${APP_STG_PATH}
               sudo docker compose down
-              git fetch origin main
-              git reset --hard origin/main
+              git pull origin main
             else
               ssh-keyscan github.com > ~/.ssh/known_hosts
-              git clone ${GIT_URL} ${APP_STG_PATH}
+              git clone $GIT_URL ${APP_STG_PATH}
               cd ${APP_STG_PATH}
             fi
 
-            # If there are any env vars update
-            echo "APP_STG_PORT_1=${APP_STG_PORT_1}" > .env
-            echo "APP_STG_PORT_2=${APP_STG_PORT_2}" >> .env
+            # If there are any envars update
+            echo "APP_STG_PORT=${APP_STG_PORT}" > .env
             echo "MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}" >> .env
             echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}" >> .env
             echo "MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}" >> .env
 
-            # Create required directories
-            mkdir -p nginx/sites-available
-            mkdir -p nginx/sites-enabled
-
-            # Create Nginx Dockerfile for HTTP Challenge
-            cat > nginx/Dockerfile.challenge <<EOL
-            # Menggunakan image nginx sebagai dasar
-            FROM nginx:latest
-
-            # Menyalin file nginx.conf ke dalam container
-            COPY nginx.conf /etc/nginx/nginx.conf
-
-            # Menyalin direktori sites-available dan sites-enabled ke dalam container
-            COPY sites-available /etc/nginx/sites-available
-            COPY sites-enabled /etc/nginx/sites-enabled
-
-            # Menyalin skrip init-nginx-challenge.sh ke dalam container
-            COPY init-nginx-challenge.sh /init-nginx-challenge.sh
-
-            # Memberikan izin eksekusi untuk skrip init-nginx-challenge.sh
-            RUN chmod +x /init-nginx-challenge.sh
-
-            # Menjalankan skrip init-nginx-challenge.sh saat container dijalankan
-            ENTRYPOINT ["/init-nginx-challenge.sh"]
-            EOL
-
-            # Create Nginx Dockerfile for SSL
-            cat > nginx/Dockerfile.ssl <<EOL
-            # Menggunakan image nginx sebagai dasar
-            FROM nginx:latest
-
-            # Menyalin file nginx.conf ke dalam container
-            COPY nginx.conf /etc/nginx/nginx.conf
-
-            # Menyalin direktori sites-available dan sites-enabled ke dalam container
-            COPY sites-available /etc/nginx/sites-available
-            COPY sites-enabled /etc/nginx/sites-enabled
-
-            # Menyalin skrip init-nginx-ssl.sh ke dalam container
-            COPY init-nginx-ssl.sh /init-nginx-ssl.sh
-
-            # Memberikan izin eksekusi untuk skrip init-nginx-ssl.sh
-            RUN chmod +x /init-nginx-ssl.sh
-
-            # Menjalankan skrip init-nginx-ssl.sh saat container dijalankan
-            ENTRYPOINT ["/init-nginx-ssl.sh"]
-            EOL
-
-            # Create init-nginx-challenge.sh script
-            cat > nginx/init-nginx-challenge.sh <<EOL
-            #!/bin/sh
-            # Start Nginx without SSL for Let's Encrypt challenge
-            nginx -g "daemon off;"
-            EOL
-
-            # Create init-nginx-ssl.sh script
-            cat > nginx/init-nginx-ssl.sh <<EOL
-            #!/bin/sh
-            # Path to the DH parameters file
-            DHPARAMS_PATH="/etc/ssl/certs/dhparam.pem"
-            # Check if DH parameters file already exists
-            if [ ! -f "$DHPARAMS_PATH" ]; then
-              echo "Creating DH parameters file..."
-              openssl dhparam -out "$DHPARAMS_PATH" 2048
-            else
-              echo "DH parameters file already exists."
-            fi
-            # Enable sites by creating symlinks to sites-enabled
-            ln -s /etc/nginx/sites-available/stg.pac-app.online.conf /etc/nginx/sites-enabled/
-            # Start Nginx
-            nginx -g "daemon off;"
-            EOL
-
-            # Create nginx.conf file
-            cat > nginx/nginx.conf <<EOL
-            events {
-                worker_connections 1024;
-            }
-            http {
-                include /etc/nginx/mime.types;
-                default_type application/octet-stream;
-                sendfile on;
-                keepalive_timeout 65;
-                include /etc/nginx/sites-enabled/*;
-            }
-            EOL
-
-            # Create configuration for stg.pac-app.online
-            cat > nginx/sites-available/stg.pac-app.online.conf <<EOL
-            server {
-                listen 80;
-                server_name stg.pac-app.online;
-                location /.well-known/acme-challenge/ {
-                    root /var/www/certbot;
-                }
-                location / {
-                    return 301 https://\$host\$request_uri;
-                }
-            }
-            server {
-                listen 443 ssl;
-                server_name stg.pac-app.online;
-                ssl_certificate /etc/letsencrypt/live/stg.pac-app.online/fullchain.pem;
-                ssl_certificate_key /etc/letsencrypt/live/stg.pac-app.online/privkey.pem;
-                ssl_dhparam /etc/ssl/certs/dhparam.pem;
-                location / {
-                    proxy_pass http://pacmusic-stg-1:5000;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto \$scheme;
-                }
-            }
-            EOL
-
-            # Create configuration for pac-app.online
-            cat > nginx/sites-available/pac-app.online.conf <<EOL
-            server {
-                listen 80;
-                server_name pac-app.online;
-                location /.well-known/acme-challenge/ {
-                    root /var/www/certbot;
-                }
-                location / {
-                    return 301 https://\$host\$request_uri;
-                }
-            }
-            server {
-                listen 443 ssl;
-                server_name pac-app.online;
-                ssl_certificate /etc/letsencrypt/live/pac-app.online/fullchain.pem;
-                ssl_certificate_key /etc/letsencrypt/live/pac-app.online/privkey.pem;
-                ssl_dhparam /etc/ssl/certs/dhparam.pem;
-                location / {
-                    proxy_pass http://pacmusic-prod-1:5000;
-                    proxy_set_header Host \$host;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto \$scheme;
-                }
-            }
-            EOL
-
-            # Build and run Nginx for challenge
-            sudo docker compose -f docker-compose.yml -f nginx/Dockerfile.challenge up -d nginx
-
-            # Run Certbot to obtain certificates
-            sudo docker compose run certbot
-
-            # Verifikasi apakah file sertifikat ada
-            if [ ! -f "/etc/letsencrypt/live/stg.pac-app.online/fullchain.pem" ]; then
-              echo "Error: Certificate for stg.pac-app.online not found."
-              exit 1
+            # Create DH param if not exist
+            mkdir -p ./nginx/dhparam
+            if [ ! -f ./nginx/dhparam/dhparam.pem ]; then
+              openssl dhparam -out ./nginx/dhparam/dhparam.pem 2048
             fi
 
-            if [ ! -f "/etc/letsencrypt/live/pac-app.online/fullchain.pem" ]; then
-              echo "Error: Certificate for pac-app.online not found."
-              exit 1
+            # Create self-signed certificate if not exist
+            mkdir -p ./nginx/certs
+            if [ ! -f ./nginx/certs/staging.crt ] || [ ! -f ./nginx/certs/staging.key ]; then
+              openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ./nginx/certs/staging.key -out ./nginx/certs/staging.crt -subj "/CN=stg.pac-app.online/O=MyCompany/C=US"
             fi
 
-            # Build and run Nginx with SSL
-            sudo docker compose -f docker-compose.yml -f nginx/Dockerfile.ssl up -d nginx
-
-            # Run remaining services
-            sudo docker compose up pacmusic-stg-1 pacmusic-stg-2 --build --detach
-
+            # Run app
+            sudo docker compose up --build --detach pacmusic-stg-1 pacmusic-stg-2 nginx-staging
+      
       - name: Hit Endpoint
         run: |
           sleep 20
-          nslookup stg.pac-app.online
-          curl https://stg.pac-app.online
-          
-      - name: Check Nginx Logs
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST_STAGING }}
-          username: ${{ secrets.SSH_USER_NAME_STAGING }}
-          key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
-          script: |
-            docker logs $(docker ps -q --filter "name=nginx")
+          curl -k https://${{ secrets.STG_URL }}
