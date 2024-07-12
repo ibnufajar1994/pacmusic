@@ -1,7 +1,23 @@
 version: '3'
 
 services:
-  
+
+# DEV
+  pacmusic-dev:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: pacmusic-dev
+    environment:
+      MINIO_ENDPOINT: ${MINIO_DEV_ENDPOINT}
+      MINIO_ACCESS_KEY: ${MINIO_DEV_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_DEV_SECRET_KEY}
+    ports:
+      - 5000:5000
+    networks:
+      - pacmusic-network
+
+# STG
   pacmusic-stg-1:
     build:
       context: ./app
@@ -31,6 +47,7 @@ services:
       - pacmusic-network
       
 
+# PROD
   pacmusic-prod-1:
     image: "${APP_IMAGE}:${APP_TAG}"
     container_name: pacmusic-prod-1
@@ -55,6 +72,8 @@ services:
     networks:
       - pacmusic-network
       
+ # nginx
+ 
   nginx:
     image: nginx:alpine
     container_name: nginx
@@ -81,6 +100,7 @@ services:
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - pacmusic-network
+
 
 networks:
   pacmusic-network:
