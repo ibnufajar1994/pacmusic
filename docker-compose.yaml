@@ -1,7 +1,6 @@
 version: '3'
 
 services:
-
   # Nginx for Staging
   nginx-staging:
     image: nginx:latest
