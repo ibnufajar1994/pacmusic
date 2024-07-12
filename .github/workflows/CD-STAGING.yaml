@@ -56,9 +56,9 @@ jobs:
               openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ./nginx/certs/staging.key -out ./nginx/certs/staging.crt -subj "/CN=stg.pac-app.online/O=MyCompany/C=US"
             fi
 
-            # Run app
-            sudo docker compose up --build --detach pacmusic-stg-1 pacmusic-stg-2 nginx-staging
-      
+            # Run all services
+            sudo docker compose up nginx-staging pacmusic-stg-1 pacmusic-stg-2  --build --detach
+
       - name: Hit Endpoint
         run: |
           sleep 20
