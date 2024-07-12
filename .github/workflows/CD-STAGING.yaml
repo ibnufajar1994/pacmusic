@@ -28,7 +28,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
           envs: APP_STG_PATH,GIT_URL,MINIO_STG_ENDPOINT,MINIO_STG_ACCESS_KEY,MINIO_STG_SECRET_KEY,APP_STG_PORT_1,APP_STG_PORT_2
           script: |
-            echo "Debugging: Print non-sensitive environment variables"
+            # Debug: Print non-sensitive environment variables
             echo "APP_STG_PATH: ${APP_STG_PATH}"
             echo "MINIO_STG_ENDPOINT: ${MINIO_STG_ENDPOINT}"
             echo "APP_STG_PORT_1: ${APP_STG_PORT_1}"
@@ -37,56 +37,68 @@ jobs:
             if [[ -d "${APP_STG_PATH}" ]]; then 
               cd ${APP_STG_PATH}
               git config pull.rebase false
-              git fetch origin main
-              git reset --hard origin/main
+              sudo docker compose down
+              git pull origin main
             else
               ssh-keyscan github.com > ~/.ssh/known_hosts
               git clone $GIT_URL ${APP_STG_PATH}
               cd ${APP_STG_PATH}
             fi
 
-            echo "Updating environment variables"
-            cat << EOF > .env
-            APP_STG_PORT_1=${APP_STG_PORT_1}
-            APP_STG_PORT_2=${APP_STG_PORT_2}
-            MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}
-            MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}
-            MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}
-            EOF
+            # If there are any envars update
+            echo "APP_STG_PORT_1=${APP_STG_PORT_1}" > .env
+            echo "APP_STG_PORT_2=${APP_STG_PORT_2}" >> .env
+            echo "MINIO_STG_ENDPOINT=${MINIO_STG_ENDPOINT}" >> .env
+            echo "MINIO_STG_ACCESS_KEY=${MINIO_STG_ACCESS_KEY}" >> .env
+            echo "MINIO_STG_SECRET_KEY=${MINIO_STG_SECRET_KEY}" >> .env
 
-            echo "Generating DH param if not exists"
+            # Generate DH param if not exists
             if [ ! -f ./nginx/ssl/dhparam.pem ]; then
               sudo mkdir -p ./nginx/ssl
               sudo openssl dhparam -out ./nginx/ssl/dhparam.pem 2048
             fi
 
-            echo "Stopping all services"
-            sudo docker compose down
-
-            echo "Starting Nginx and Certbot"
-            sudo docker compose up -d nginx certbot
+            # Start Nginx
+            sudo docker compose up -d nginx
             echo "Waiting for Nginx to start..."
             sleep 10
 
-            echo "Checking Nginx configuration"
-            sudo docker compose exec nginx nginx -T
+            # Run Certbot
+            sudo docker compose run --rm --entrypoint "\
+              certbot certonly --webroot -w /var/www/certbot \
+                --non-interactive \
+                -d pac-app.online -d stg.pac-app.online \
+                --agree-tos \
+                --force-renewal" certbot || true
 
-            echo "Running Certbot"
-            sudo docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d pac-app.online -d stg.pac-app.online --force-renewal
-
-            echo "Reloading Nginx"
+            # Reconfigure and reload Nginx
             sudo docker compose exec nginx nginx -s reload
 
-            echo "Starting staging services"
+            # Start other services
             sudo docker compose up -d pacmusic-stg-1 pacmusic-stg-2
 
-            echo "Checking if services are running"
+            # Check if services are running
+            echo "Checking if services are running..."
             sudo docker compose ps
 
-            echo "Checking docker compose logs"
+            # Check logs for any errors
+            echo "Checking docker compose logs..."
             sudo docker compose logs --tail=50
 
-      - name: Check Endpoint
+            # Additional debugging steps
+            echo "Checking Certbot logs"
+            sudo docker compose logs certbot
+
+            echo "Checking Nginx logs"
+            sudo docker compose logs nginx
+
+            echo "Listing certificates"
+            sudo docker compose run --rm --entrypoint "certbot certificates" certbot
+
+            echo "Checking detailed Certbot log"
+            sudo cat /var/log/letsencrypt/letsencrypt.log
+
+      - name: Hit Endpoint
         run: |
           sleep 20
-          curl -v ${{ secrets.STG_URL }}
+          curl ${{ secrets.STG_URL }}
