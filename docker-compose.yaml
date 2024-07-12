@@ -1,7 +1,43 @@
-version: '3.8'
+version: '3'
 
 services:
-  # DEV
+
+  # Nginx for Staging
+  nginx-staging:
+    image: nginx:latest
+    container_name: nginx-staging
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/staging.conf:/etc/nginx/nginx.conf
+      - ./nginx/certs:/etc/nginx/certs
+      - ./nginx/dhparam:/etc/nginx/dhparam
+    depends_on:
+      - pacmusic-stg-1
+      - pacmusic-stg-2
+    networks:
+      - pacmusic-network
+
+  # Nginx for Production
+  nginx-production:
+    image: nginx:latest
+    container_name: nginx-production
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/production.conf:/etc/nginx/nginx.conf
+      - ./nginx/certs:/etc/nginx/certs
+      - ./nginx/dhparam:/etc/nginx/dhparam
+    depends_on:
+      - pacmusic-prod-1
+      - pacmusic-prod-2
+    networks:
+      - pacmusic-network
+
+  # Existing services...
+
   pacmusic-dev:
     build:
       context: ./app
@@ -12,11 +48,10 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_DEV_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_DEV_SECRET_KEY}
     ports:
-      - "5000:5000"
+      - 5000:5000
     networks:
       - pacmusic-network
 
-  # STG
   pacmusic-stg-1:
     build:
       context: ./app
@@ -27,7 +62,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_STG_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_STG_SECRET_KEY}
     ports:
-      - "${APP_STG_PORT_1}:5000"
+      - ${APP_STG_PORT_1}:5000
     networks:
       - pacmusic-network
 
@@ -41,11 +76,10 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_STG_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_STG_SECRET_KEY}
     ports:
-      - "${APP_STG_PORT_2}:5000"
+      - ${APP_STG_PORT_2}:5000
     networks:
       - pacmusic-network
 
-  # PROD
   pacmusic-prod-1:
     image: "${APP_IMAGE}:${APP_TAG}"
     container_name: pacmusic-prod-1
@@ -54,7 +88,7 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_PROD_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_PROD_SECRET_KEY}
     ports:
-      - "${APP_PROD_PORT_1}:5000"
+      - ${APP_PROD_PORT_1}:5000
     networks:
       - pacmusic-network
 
@@ -66,39 +100,16 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_PROD_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_PROD_SECRET_KEY}
     ports:
-      - "${APP_PROD_PORT_2}:5000"
+      - ${APP_PROD_PORT_2}:5000
     networks:
       - pacmusic-network
-
-  # Nginx
-  nginx:
-    image: nginx:latest
-    container_name: nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    depends_on:
-      - pacmusic-stg-1
-      - pacmusic-stg-2
-      - pacmusic-prod-1
-      - pacmusic-prod-2
-    networks:
-      - pacmusic-network
-
-  # Certbot
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    command: certonly --webroot -w /var/www/certbot --email ibnu.fajar94@outlook.com -d stg.pac-app.online --agree-tos --no-eff-email
 
 networks:
   pacmusic-network:
     driver: bridge
     name: pacmusic-network
+
+volumes:
+  minio-dev-vol:
+    driver: local
+    name: minio-dev-vol
