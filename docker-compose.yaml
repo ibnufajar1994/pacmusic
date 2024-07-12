@@ -45,6 +45,7 @@ services:
       - ${APP_STG_PORT_2}:5000
     networks:
       - pacmusic-network
+      
 
 # PROD
   pacmusic-prod-1:
@@ -58,7 +59,7 @@ services:
       - ${APP_PROD_PORT_1}:5000
     networks:
       - pacmusic-network
-
+      
   pacmusic-prod-2:
     image: "${APP_IMAGE}:${APP_TAG}"
     container_name: pacmusic-prod-2
@@ -71,7 +72,6 @@ services:
     networks:
       - pacmusic-network
 
-# Nginx
   nginx:
     image: nginx:alpine
     container_name: nginx
@@ -97,6 +97,7 @@ services:
       - ./certbot/www:/var/www/certbot
     networks:
       - pacmusic-network
+
 
 networks:
   pacmusic-network:
