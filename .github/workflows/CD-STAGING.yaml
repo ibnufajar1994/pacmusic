@@ -53,6 +53,7 @@ jobs:
 
             # Run app
             sudo docker compose up pacmusic-stg-1 pacmusic-stg-2 nginx certbot --build --detach
+
       
       - name: Hit Endpoint
         run: |

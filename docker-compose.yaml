@@ -1,8 +1,42 @@
 version: '3'
 
 services:
+  # Nginx for Staging
+  nginx-staging:
+    image: nginx:latest
+    container_name: nginx-staging
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/staging.conf:/etc/nginx/nginx.conf
+      - ./nginx/certs:/etc/nginx/certs
+      - ./nginx/dhparam:/etc/nginx/dhparam
+    depends_on:
+      - pacmusic-stg-1
+      - pacmusic-stg-2
+    networks:
+      - pacmusic-network
 
-# DEV
+  # Nginx for Production
+  nginx-production:
+    image: nginx:latest
+    container_name: nginx-production
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/production.conf:/etc/nginx/nginx.conf
+      - ./nginx/certs:/etc/nginx/certs
+      - ./nginx/dhparam:/etc/nginx/dhparam
+    depends_on:
+      - pacmusic-prod-1
+      - pacmusic-prod-2
+    networks:
+      - pacmusic-network
+
+  # Existing services...
+
   pacmusic-dev:
     build:
       context: ./app
@@ -17,7 +51,6 @@ services:
     networks:
       - pacmusic-network
 
-# STG
   pacmusic-stg-1:
     build:
       context: ./app
@@ -45,8 +78,8 @@ services:
       - ${APP_STG_PORT_2}:5000
     networks:
       - pacmusic-network
+      
 
-# PROD
   pacmusic-prod-1:
     image: "${APP_IMAGE}:${APP_TAG}"
     container_name: pacmusic-prod-1
@@ -58,6 +91,7 @@ services:
       - ${APP_PROD_PORT_1}:5000
     networks:
       - pacmusic-network
+
 
   pacmusic-prod-2:
     image: "${APP_IMAGE}:${APP_TAG}"
