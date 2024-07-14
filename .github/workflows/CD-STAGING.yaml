@@ -75,5 +75,5 @@ jobs:
         run: |
           sleep 20
 
-          curl -v ${{ secrets.STG_URL }}
+          curl -v ${{ secrets.PROD_URL }}
 
