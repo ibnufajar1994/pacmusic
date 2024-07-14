@@ -71,7 +71,7 @@ jobs:
             # Run Certbot
             sudo docker compose run --rm --entrypoint "\
               certbot certonly --webroot --webroot-path=/var/www/certbot \
-              --email ibnu.fajar94@outlook.com \
+              --email lextalionis2@aol.com \
               --agree-tos \
               --non-interactive \
               --no-eff-email \
