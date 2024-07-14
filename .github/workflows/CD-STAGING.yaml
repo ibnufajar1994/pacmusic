@@ -57,7 +57,12 @@ jobs:
 
             sudo docker compose up -d nginx
             echo "Waiting for Nginx to start..."
-            sleep 10
+            sleep 30
+
+            # Validate the existence and accessibility of the challenge directory
+            sudo mkdir -p /var/www/certbot/.well-known/acme-challenge
+            echo "test" | sudo tee /var/www/certbot/.well-known/acme-challenge/testfile
+            curl http://stg.pac-app.online/.well-known/acme-challenge/testfile
 
             sudo docker compose run --rm --entrypoint "\
               certbot certonly --webroot --webroot-path=/var/www/certbot \
@@ -68,12 +73,22 @@ jobs:
               --force-renewal \
               -d stg.pac-app.online" certbot
 
+
+            # Start other services
             sudo docker compose up -d --force-recreate --build pacmusic-stg-1 pacmusic-stg-2
             sudo docker compose up -d nginx
+
+            # Check if services are running
+            echo "Checking if services are running..."
+            sudo docker compose ps
+
+            # Check logs for any errors
+            echo "Checking docker compose logs..."
+            sudo docker compose logs --tail=50
 
       - name: Hit Endpoint
         run: |
           sleep 20
-
           curl -v ${{ secrets.PROD_URL }}
+
 
