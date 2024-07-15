@@ -29,18 +29,22 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
           envs: APP_STG_PATH, GIT_URL, APP_STG_PORT, APP_STG_PORT_1, APP_STG_PORT_2, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY
           script: |
+            echo "Starting deployment script..."
             if [[ -d "${APP_STG_PATH}" ]]; then 
+              echo "Directory exists, pulling latest changes..."
               cd $APP_STG_PATH
               sudo docker compose down pacmusic-stg-1 pacmusic-stg-2 nginx certbot
               git stash --include-untracked
               git pull origin main
               git stash pop || true
             else
+              echo "Directory does not exist, cloning repository..."
               ssh-keyscan github.com > ~/.ssh/known_hosts
               git clone $GIT_URL $APP_STG_PATH
               cd $APP_STG_PATH
             fi
 
+            echo "Setting environment variables..."
             echo "APP_STG_PORT=${{ secrets.APP_STG_PORT }}" > .env
             echo "APP_STG_PORT_1=${{ secrets.APP_STG_PORT_1 }}" >> .env
             echo "APP_STG_PORT_2=${{ secrets.APP_STG_PORT_2 }}" >> .env
@@ -48,22 +52,30 @@ jobs:
             echo "MINIO_STG_ACCESS_KEY=${{ secrets.MINIO_STG_ACCESS_KEY }}" >> .env
             echo "MINIO_STG_SECRET_KEY=${{ secrets.MINIO_STG_SECRET_KEY }}" >> .env
 
+            echo "Creating necessary directories and symbolic links..."
             sudo mkdir -p /var/www/certbot
-
             sudo ln -sf /etc/nginx/sites-available/stg.pac-app.online /etc/nginx/sites-enabled/
             sudo ln -sf /etc/nginx/sites-available/pac-app.online /etc/nginx/sites-enabled/
 
+            echo "Building and starting Docker containers..."
             sudo docker compose up --build --detach pacmusic-stg-1 pacmusic-stg-2 nginx certbot
 
+            echo "Checking if Certbot container is running..."
             if sudo docker ps | grep -q certbot; then
               echo "Certbot container is running."
               sudo docker stop certbot
               sudo docker rm certbot
+            else
+              echo "Certbot container is not running."
             fi
 
+            echo "Starting Certbot container..."
             sudo docker compose up --detach certbot
+
+            echo "Running Certbot..."
             sudo docker exec certbot /bin/sh -c "certbot certonly --webroot -w /var/www/certbot -d stg.pac-app.online --non-interactive --agree-tos -m shootbyrealme@gmail.com --force-renewal"
 
+            echo "Updating SSL configuration..."
             sudo ln -sf /etc/nginx/snippets/ssl-stg.pac-app.online.conf /etc/nginx/snippets/
             sudo ln -sf /etc/nginx/snippets/ssl-pac-app.online.conf /etc/nginx/snippets/
             sudo docker restart nginx
@@ -71,12 +83,14 @@ jobs:
       - name: Check staging endpoint
         run: |
           sleep 10
+          echo "Checking HTTP endpoint..."
           if curl -f http://stg.pac-app.online:${{ secrets.APP_STG_PORT_1 }} || curl -f http://stg.pac-app.online:${{ secrets.APP_STG_PORT_2 }}; then
             echo "HTTP endpoint is accessible."
           else
             echo "HTTP endpoint is not accessible."
             exit 1
           fi
+          echo "Checking HTTPS endpoint..."
           if curl -f https://stg.pac-app.online; then
             echo "HTTPS endpoint is accessible."
           else
