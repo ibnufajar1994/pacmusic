@@ -73,11 +73,13 @@ services:
 
   # NGINX Reverse Proxy & Load Balancing
   nginx:
+    ports:
+      - "80:80"
+      - "443:443"
     image: nginx:latest
     container_name: nginx
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
       - ./nginx/sites-available:/etc/nginx/sites-available:ro
       - /etc/letsencrypt:/etc/letsencrypt
       - /var/log/nginx:/var/log/nginx
@@ -95,6 +97,8 @@ services:
     entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'
     networks:
       - pacmusic-network
+    command: "certonly --webroot -w /var/www/certbot -d pac-app.online --email admin@pac-app.online --non-interactive --agree-tos --force-renewal"
+
 
 networks:
   pacmusic-network:
