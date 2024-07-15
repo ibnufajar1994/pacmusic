@@ -9,67 +9,55 @@ on:
 jobs:
   deploy-production:
     name: Deploy to production server 🚀
-    environment: production
     runs-on: ubuntu-latest
+    environment:  production 
 
     steps:
       - name: Execute deployment command
         uses: appleboy/ssh-action@v1.0.3
         env:
-          APP_NAME: ${{ vars.APP_NAME }}
-          APP_TAG: ${{ github.event.release.tag_name }}
           APP_PROD_PATH: ${{ vars.APP_PROD_PATH }}
           GIT_URL: ${{ secrets.GIT_URL }}
-          APP_PROD_PORT: ${{ secrets.APP_PROD_PORT}}
-          APP_PROD_PORT_1: ${{ secrets.APP_PROD_PORT_1}}
-          APP_PROD_PORT_2: ${{ secrets.APP_PROD_PORT_2}}
-          MINIO_PROD_ENDPOINT: ${{ secrets.MINIO_PROD_ENDPOINT}}
-          MINIO_PROD_ACCESS_KEY: ${{ secrets.MINIO_PROD_ACCESS_KEY}}
-          MINIO_PROD_SECRET_KEY: ${{ secrets.MINIO_PROD_SECRET_KEY}}
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME}}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN}}
+          MINIO_PROD_ENDPOINT: ${{ secrets.MINIO_PROD_ENDPOINT }}
+          MINIO_PROD_ACCESS_KEY: ${{ secrets.MINIO_PROD_ACCESS_KEY }}
+          MINIO_PROD_SECRET_KEY: ${{ secrets.MINIO_PROD_SECRET_KEY }}
+          APP_PROD_PORT: ${{ secrets.APP_PROD_PORT }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          APP_NAME: pacmusic
+          APP_TAG: ${{ github.event.release.tag_name }}
 
         with:
           host: ${{ secrets.SSH_HOST_PRODUCTION }}
           username: ${{ secrets.SSH_USER_NAME_PRODUCTION }}
           key: ${{ secrets.SSH_PRIVATE_KEY_PRODUCTION }}
-          envs: APP_NAME, APP_TAG, APP_PROD_PATH, GIT_URL, APP_PROD_PORT, APP_PROD_PORT_1, APP_PROD_PORT_2, MINIO_PROD_ENDPOINT, MINIO_PROD_ACCESS_KEY, MINIO_PROD_SECRET_KEY, DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
+          envs: APP_PROD_PATH, GIT_URL, MINIO_PROD_ENDPOINT, MINIO_PROD_ACCESS_KEY, MINIO_PROD_SECRET_KEY, APP_PROD_PORT, DOCKERHUB_USERNAME, DOCKERHUB_TOKEN, APP_NAME, APP_TAG
           script: |
+
             sudo docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
 
             if [[ -d "${APP_PROD_PATH}" ]]; then 
-              cd $APP_PROD_PATH
-              sudo docker compose down pacmusic-prod-1 pacmusic-prod-2 nginx certbot
-              git pull origin main
+              cd ${APP_PROD_PATH}
+              sudo docker compose down
+              git pull --rebase
             else
               ssh-keyscan github.com > ~/.ssh/known_hosts
-              git clone $GIT_URL $APP_PROD_PATH
-              cd $APP_PROD_PATH
+              git clone $GIT_URL ${APP_PROD_PATH}
+              cd ${APP_PROD_PATH}
             fi
 
+            # If there are any envars update
             echo "APP_PROD_PORT=$APP_PROD_PORT" > .env
-            echo "APP_PROD_PORT_1=$APP_PROD_PORT_1" >> .env
-            echo "APP_PROD_PORT_2=$APP_PROD_PORT_2" >> .env
             echo "MINIO_PROD_ENDPOINT=$MINIO_PROD_ENDPOINT" >> .env
             echo "MINIO_PROD_ACCESS_KEY=$MINIO_PROD_ACCESS_KEY" >> .env
             echo "MINIO_PROD_SECRET_KEY=$MINIO_PROD_SECRET_KEY" >> .env
             echo "APP_IMAGE=${DOCKERHUB_USERNAME}/${APP_NAME}" >> .env
             echo "APP_TAG=$APP_TAG" >> .env
 
-            sudo mkdir -p /var/www/certbot
-
-            sudo ln -sf /etc/nginx/sites-available/stg.pac-app.online /etc/nginx/sites-enabled/
-            sudo ln -sf /etc/nginx/sites-available/pac-app.online /etc/nginx/sites-enabled/
-
-            sudo docker compose up --build --detach pacmusic-prod-1 pacmusic-prod-2 nginx certbot
-
-            sudo docker exec certbot certonly --webroot -w /var/www/certbot -d pac-app.online --non-interactive --agree-tos -m shootbyrealme@gmail.com --force-renewal
-
-            sudo ln -sf /etc/nginx/snippets/ssl-stg.pac-app.online.conf /etc/nginx/snippets/
-            sudo ln -sf /etc/nginx/snippets/ssl-pac-app.online.conf /etc/nginx/snippets/
-            sudo docker restart nginx
+            # Run app
+            sudo docker compose up --build --detach pacmusic-prod
 
       - name: Hit Endpoint
         run: |
-          sleep 10
-          curl https://pac-app.online
+          sleep 20
+          curl ${{ secrets.PROD_URL }}
