@@ -2,7 +2,7 @@ version: '3'
 
 services:
 
-  # DEV
+# DEV
   pacmusic-dev:
     build:
       context: ./app
@@ -17,84 +17,31 @@ services:
     networks:
       - pacmusic-network
 
-  # STG
-  pacmusic-stg-1:
+# STG
+  pacmusic-stg:
     build:
       context: ./app
       dockerfile: Dockerfile
-    container_name: pacmusic-stg-1
+    container_name: pacmusic-stg
     environment:
       MINIO_ENDPOINT: ${MINIO_STG_ENDPOINT}
       MINIO_ACCESS_KEY: ${MINIO_STG_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_STG_SECRET_KEY}
     ports:
-      - ${APP_STG_PORT_1}:5000
+      - ${APP_STG_PORT}:5000
     networks:
       - pacmusic-network
 
-  pacmusic-stg-2:
-    build:
-      context: ./app
-      dockerfile: Dockerfile
-    container_name: pacmusic-stg-2
-    environment:
-      MINIO_ENDPOINT: ${MINIO_STG_ENDPOINT}
-      MINIO_ACCESS_KEY: ${MINIO_STG_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_STG_SECRET_KEY}
-    ports:
-      - ${APP_STG_PORT_2}:5000
-    networks:
-      - pacmusic-network
-
-  # PROD
-  pacmusic-prod-1:
+# PROD
+  pacmusic-prod:
     image: "${APP_IMAGE}:${APP_TAG}"
-    container_name: pacmusic-prod-1
+    container_name: pacmusic-prod
     environment:
       MINIO_ENDPOINT: ${MINIO_PROD_ENDPOINT}
       MINIO_ACCESS_KEY: ${MINIO_PROD_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_PROD_SECRET_KEY}
     ports:
-      - ${APP_PROD_PORT_1}:5000
-    networks:
-      - pacmusic-network
-
-  pacmusic-prod-2:
-    image: "${APP_IMAGE}:${APP_TAG}"
-    container_name: pacmusic-prod-2
-    environment:
-      MINIO_ENDPOINT: ${MINIO_PROD_ENDPOINT}
-      MINIO_ACCESS_KEY: ${MINIO_PROD_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_PROD_SECRET_KEY}
-    ports:
-      - ${APP_PROD_PORT_2}:5000
-    networks:
-      - pacmusic-network
-
-  # NGINX Reverse Proxy & Load Balancing
-  nginx:
-    image: nginx:latest
-    container_name: nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
-      - ./nginx/sites-available:/etc/nginx/sites-available:ro
-      - /etc/letsencrypt:/etc/letsencrypt
-      - /var/log/nginx:/var/log/nginx
-    network_mode: host
-    depends_on:
-      - certbot
-
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    volumes:
-      - /etc/letsencrypt:/etc/letsencrypt
-      - /var/lib/letsencrypt:/var/lib/letsencrypt
-      - /var/www/certbot:/var/www/certbot
+      - ${APP_PROD_PORT}:5000
     networks:
       - pacmusic-network
 
