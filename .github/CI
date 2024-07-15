@@ -1,0 +1,37 @@
+name: Dev Testing 🔎 
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-testing:
+    name: Build and Testing
+    runs-on: ubuntu-latest
+    environment:  dev-testing
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      
+      - name: Create .env file
+        run: |
+          echo "MINIO_DEV_ENDPOINT=${{ secrets.MINIO_DEV_ENDPOINT }}" >> .env
+          echo "MINIO_DEV_ACCESS_KEY=${{ secrets.MINIO_DEV_ACCESS_KEY }}" >> .env
+          echo "MINIO_DEV_SECRET_KEY=${{ secrets.MINIO_DEV_SECRET_KEY }}" >> .env
+
+      - name: Build and Run Container
+        run: |
+          sudo docker compose up --build --detach pacmusic-dev
+
+      - name: Hit Endpoint
+        run: |
+          sleep 10
+          curl http://localhost:5000
+          
+      - name: Install testing requirements
+        run: |
+          pip install -r test/requirements.txt
+
+      - name: Run test
+        run: |
+          python3 test/test.py
