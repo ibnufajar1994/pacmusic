@@ -49,6 +49,7 @@ jobs:
             echo "MINIO_STG_SECRET_KEY=${{ secrets.MINIO_STG_SECRET_KEY }}" >> .env
 
             # Ensure nginx and certbot directories exist
+            mkdir -p /etc/nginx/sites-enabled
             sudo mkdir -p /var/www/certbot
 
             # Create symbolic links for Nginx configuration
