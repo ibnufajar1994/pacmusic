@@ -16,12 +16,12 @@ jobs:
         env:
           APP_STG_PATH: ${{ vars.APP_STG_PATH }}
           GIT_URL: ${{ secrets.GIT_URL }}
-          APP_STG_PORT: ${{ secrets.APP_STG_PORT}}
-          APP_STG_PORT_1: ${{ secrets.APP_STG_PORT_1}}
-          APP_STG_PORT_2: ${{ secrets.APP_STG_PORT_2}}
-          MINIO_STG_ENDPOINT: ${{ secrets.MINIO_STG_ENDPOINT}}
-          MINIO_STG_ACCESS_KEY: ${{ secrets.MINIO_STG_ACCESS_KEY}}
-          MINIO_STG_SECRET_KEY: ${{ secrets.MINIO_STG_SECRET_KEY}}
+          APP_STG_PORT: ${{ secrets.APP_STG_PORT }}
+          APP_STG_PORT_1: ${{ secrets.APP_STG_PORT_1 }}
+          APP_STG_PORT_2: ${{ secrets.APP_STG_PORT_2 }}
+          MINIO_STG_ENDPOINT: ${{ secrets.MINIO_STG_ENDPOINT }}
+          MINIO_STG_ACCESS_KEY: ${{ secrets.MINIO_STG_ACCESS_KEY }}
+          MINIO_STG_SECRET_KEY: ${{ secrets.MINIO_STG_SECRET_KEY }}
 
         with:
           host: ${{ secrets.SSH_HOST_STAGING }}
@@ -59,12 +59,9 @@ jobs:
               echo "Certbot container is running."
               sudo docker stop certbot
               sudo docker rm certbot
-              sudo docker compose up --detach certbot
-            else
-              echo "Certbot container is not running. Starting Certbot."
-              sudo docker compose up --detach certbot
             fi
 
+            sudo docker compose up --detach certbot
             sudo docker exec certbot /bin/sh -c "certbot certonly --webroot -w /var/www/certbot -d stg.pac-app.online --non-interactive --agree-tos -m shootbyrealme@gmail.com --force-renewal"
 
             sudo ln -sf /etc/nginx/snippets/ssl-stg.pac-app.online.conf /etc/nginx/snippets/
