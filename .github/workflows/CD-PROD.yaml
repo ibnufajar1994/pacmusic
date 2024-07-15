@@ -35,7 +35,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_PRODUCTION }}
           envs: APP_NAME, APP_TAG, APP_PROD_PATH, GIT_URL, APP_PROD_PORT, APP_PROD_PORT_1, APP_PROD_PORT_2, MINIO_PROD_ENDPOINT, MINIO_PROD_ACCESS_KEY, MINIO_PROD_SECRET_KEY, DOCKERHUB_USERNAME, DOCKERHUB_TOKEN
           script: |
-
             sudo docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
 
             if [[ -d "${APP_PROD_PATH}" ]]; then 
@@ -48,7 +47,6 @@ jobs:
               cd $APP_PROD_PATH
             fi
 
-            # If there are any envars update
             echo "APP_PROD_PORT=$APP_PROD_PORT" > .env
             echo "APP_PROD_PORT_1=$APP_PROD_PORT_1" >> .env
             echo "APP_PROD_PORT_2=$APP_PROD_PORT_2" >> .env
@@ -58,20 +56,15 @@ jobs:
             echo "APP_IMAGE=${DOCKERHUB_USERNAME}/${APP_NAME}" >> .env
             echo "APP_TAG=$APP_TAG" >> .env
 
-            # Ensure nginx and certbot directories exist
             sudo mkdir -p /var/www/certbot
 
-            # Create symbolic links for Nginx configuration
             sudo ln -sf /etc/nginx/sites-available/stg.pac-app.online /etc/nginx/sites-enabled/
             sudo ln -sf /etc/nginx/sites-available/pac-app.online /etc/nginx/sites-enabled/
 
-            # Run app
             sudo docker compose up --build --detach pacmusic-prod-1 pacmusic-prod-2 nginx certbot
 
-            # Obtain SSL certificates
             sudo docker exec certbot certonly --webroot -w /var/www/certbot -d pac-app.online --non-interactive --agree-tos -m shootbyrealme@gmail.com --force-renewal
 
-            # Enable SSL in Nginx
             sudo ln -sf /etc/nginx/snippets/ssl-stg.pac-app.online.conf /etc/nginx/snippets/
             sudo ln -sf /etc/nginx/snippets/ssl-pac-app.online.conf /etc/nginx/snippets/
             sudo docker restart nginx
