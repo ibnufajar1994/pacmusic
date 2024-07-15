@@ -51,15 +51,16 @@ jobs:
             # Ensure nginx and certbot directories exist
             sudo mkdir -p /var/www/certbot
 
-            # Create symbolic links for Nginx configuration
-            sudo ln -sf /etc/nginx/sites-available/stg.pac-app.online /etc/nginx/sites-enabled/
-            sudo ln -sf /etc/nginx/sites-available/pac-app.online /etc/nginx/sites-enabled/
 
             # Run app
             sudo docker compose up --build --detach pacmusic-stg-1 pacmusic-stg-2 nginx certbot
 
             # Obtain SSL certificates
             sudo docker exec certbot certonly --webroot -w /var/www/certbot -d stg.pac-app.online --non-interactive --agree-tos -m admin@stg.pac-app.online --force-renewal
+
+            # Create symbolic links for Nginx configuration
+            sudo ln -sf /etc/nginx/sites-available/stg.pac-app.online /etc/nginx/sites-enabled/
+            sudo ln -sf /etc/nginx/sites-available/pac-app.online /etc/nginx/sites-enabled/
 
             # Restart nginx to load new certificates
             sudo docker restart nginx
