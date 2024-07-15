@@ -53,6 +53,13 @@ jobs:
 
             sudo docker compose up --build --detach pacmusic-stg-1 pacmusic-stg-2 nginx certbot
 
+            if sudo docker ps | grep -q certbot; then
+              echo "Certbot container is running."
+            else
+              echo "Certbot container is not running. Exiting."
+              exit 1
+            fi
+
             sudo docker exec certbot /bin/sh -c "certbot certonly --webroot -w /var/www/certbot -d stg.pac-app.online --non-interactive --agree-tos -m shootbyrealme@gmail.com --force-renewal"
 
             sudo ln -sf /etc/nginx/snippets/ssl-stg.pac-app.online.conf /etc/nginx/snippets/
@@ -62,4 +69,20 @@ jobs:
       - name: Check staging endpoint
         run: |
           sleep 10
-          curl -f https://stg.pac-app.online || exit 1
+          if curl -f http://stg.pac-app.online:${{ secrets.APP_STG_PORT_1 }} || curl -f http://stg.pac-app.online:${{ secrets.APP_STG_PORT_2 }}; then
+            echo "HTTP endpoint is accessible."
+          else
+            echo "HTTP endpoint is not accessible."
+            exit 1
+          fi
+          if curl -f https://stg.pac-app.online; then
+            echo "HTTPS endpoint is accessible."
+          else
+            echo "HTTPS endpoint is not accessible. Restarting Nginx."
+            sudo docker restart nginx
+            sleep 5
+            if ! curl -f https://stg.pac-app.online; then
+              echo "HTTPS endpoint is still not accessible. Please check Nginx and SSL configuration."
+              exit 1
+            fi
+          fi
