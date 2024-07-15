@@ -53,13 +53,13 @@ jobs:
 
             sudo docker compose up --build --detach pacmusic-stg-1 pacmusic-stg-2 nginx certbot
 
-            sudo docker exec certbot certonly --webroot -w /var/www/certbot -d stg.pac-app.online --non-interactive --agree-tos -m shootbyrealme@gmail.com --force-renewal
+            sudo docker exec certbot /bin/sh -c "certbot certonly --webroot -w /var/www/certbot -d stg.pac-app.online --non-interactive --agree-tos -m shootbyrealme@gmail.com --force-renewal"
 
             sudo ln -sf /etc/nginx/snippets/ssl-stg.pac-app.online.conf /etc/nginx/snippets/
             sudo ln -sf /etc/nginx/snippets/ssl-pac-app.online.conf /etc/nginx/snippets/
             sudo docker restart nginx
 
-      - name: Hit Endpoint
+      - name: Check staging endpoint
         run: |
           sleep 10
-          curl https://stg.pac-app.online
+          curl -f https://stg.pac-app.online || exit 1
