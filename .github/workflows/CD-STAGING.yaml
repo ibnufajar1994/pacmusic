@@ -66,5 +66,5 @@ jobs:
 
       - name: Hit Endpoint
         run: |
-          sleep 10
+          sleep 20
           curl https://stg.pac-app.online
