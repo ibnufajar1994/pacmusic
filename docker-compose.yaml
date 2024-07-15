@@ -86,7 +86,7 @@ services:
       - /var/log/nginx:/var/log/nginx
     network_mode: host
     depends_on:
-      - certbot
+      - pacmusic-stg-1 pacmusic-stg-2 
 
   certbot:
     image: certbot/certbot
