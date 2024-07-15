@@ -1,0 +1,25 @@
+upstream stg_servers {
+    ip_hash;
+    server 54.179.90.251:5002;
+    server 54.179.90.251:5003;
+}
+
+server {
+    listen 80;
+    server_name stg.pac-app.online;
+
+    location / {
+        proxy_pass http://stg_servers;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ~ /.well-known/acme-challenge {
+        root /var/www/certbot;
+    }
+}
+
+# Sertifikat SSL akan diaktifkan setelah tersedia
+include /etc/nginx/snippets/ssl-stg.pac-app.online.conf;
