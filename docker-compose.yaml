@@ -17,7 +17,7 @@ services:
     networks:
       - pacmusic-network
 
-# STG
+# STG.
   pacmusic-stg:
     build:
       context: ./app
