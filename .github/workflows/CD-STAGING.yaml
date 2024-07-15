@@ -29,7 +29,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_STAGING }}
           envs: APP_STG_PATH, GIT_URL, APP_STG_PORT, APP_STG_PORT_1, APP_STG_PORT_2, MINIO_STG_ENDPOINT, MINIO_STG_ACCESS_KEY, MINIO_STG_SECRET_KEY
           script: |
-
             if [[ -d "${APP_STG_PATH}" ]]; then 
               cd $APP_STG_PATH
               sudo docker compose down pacmusic-stg-1 pacmusic-stg-2 nginx certbot
@@ -40,7 +39,6 @@ jobs:
               cd $APP_STG_PATH
             fi
 
-            # If there are any envars update
             echo "APP_STG_PORT=${{ secrets.APP_STG_PORT }}" > .env
             echo "APP_STG_PORT_1=${{ secrets.APP_STG_PORT_1 }}" >> .env
             echo "APP_STG_PORT_2=${{ secrets.APP_STG_PORT_2 }}" >> .env
@@ -48,20 +46,15 @@ jobs:
             echo "MINIO_STG_ACCESS_KEY=${{ secrets.MINIO_STG_ACCESS_KEY }}" >> .env
             echo "MINIO_STG_SECRET_KEY=${{ secrets.MINIO_STG_SECRET_KEY }}" >> .env
 
-            # Ensure nginx and certbot directories exist
             sudo mkdir -p /var/www/certbot
 
-            # Create symbolic links for Nginx configuration
             sudo ln -sf /etc/nginx/sites-available/stg.pac-app.online /etc/nginx/sites-enabled/
             sudo ln -sf /etc/nginx/sites-available/pac-app.online /etc/nginx/sites-enabled/
 
-            # Run app
             sudo docker compose up --build --detach pacmusic-stg-1 pacmusic-stg-2 nginx certbot
 
-            # Obtain SSL certificates
-            sudo docker exec certbot certonly --webroot -w /var/www/certbot -d stg.pac-app.online --non-interactive --agree-tos -m admin@stg.pac-app.online --force-renewal
+            sudo docker exec certbot certonly --webroot -w /var/www/certbot -d stg.pac-app.online --non-interactive --agree-tos -m shootbyrealme@gmail.com --force-renewal
 
-            # Enable SSL in Nginx
             sudo ln -sf /etc/nginx/snippets/ssl-stg.pac-app.online.conf /etc/nginx/snippets/
             sudo ln -sf /etc/nginx/snippets/ssl-pac-app.online.conf /etc/nginx/snippets/
             sudo docker restart nginx
