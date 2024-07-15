@@ -61,7 +61,9 @@ jobs:
             # Obtain SSL certificates
             sudo docker exec certbot certonly --webroot -w /var/www/certbot -d stg.pac-app.online --non-interactive --agree-tos -m admin@stg.pac-app.online --force-renewal
 
-            # Restart nginx to load new certificates
+            # Enable SSL in Nginx
+            sudo ln -sf /etc/nginx/snippets/ssl-stg.pac-app.online.conf /etc/nginx/snippets/
+            sudo ln -sf /etc/nginx/snippets/ssl-pac-app.online.conf /etc/nginx/snippets/
             sudo docker restart nginx
 
       - name: Hit Endpoint
