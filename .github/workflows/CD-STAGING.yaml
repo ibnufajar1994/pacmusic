@@ -32,7 +32,9 @@ jobs:
             if [[ -d "${APP_STG_PATH}" ]]; then 
               cd $APP_STG_PATH
               sudo docker compose down pacmusic-stg-1 pacmusic-stg-2 nginx certbot
+              git stash --include-untracked
               git pull origin main
+              git stash pop || true
             else
               ssh-keyscan github.com > ~/.ssh/known_hosts
               git clone $GIT_URL $APP_STG_PATH
@@ -55,9 +57,12 @@ jobs:
 
             if sudo docker ps | grep -q certbot; then
               echo "Certbot container is running."
+              sudo docker stop certbot
+              sudo docker rm certbot
+              sudo docker compose up --detach certbot
             else
-              echo "Certbot container is not running. Exiting."
-              exit 1
+              echo "Certbot container is not running. Starting Certbot."
+              sudo docker compose up --detach certbot
             fi
 
             sudo docker exec certbot /bin/sh -c "certbot certonly --webroot -w /var/www/certbot -d stg.pac-app.online --non-interactive --agree-tos -m shootbyrealme@gmail.com --force-renewal"
