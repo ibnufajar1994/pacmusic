@@ -2,7 +2,7 @@ version: '3'
 
 services:
 
-# DEV
+  # DEV
   pacmusic-dev:
     build:
       context: ./app
@@ -17,7 +17,7 @@ services:
     networks:
       - pacmusic-network
 
-# STG
+  # STG
   pacmusic-stg-1:
     build:
       context: ./app
@@ -46,7 +46,7 @@ services:
     networks:
       - pacmusic-network
 
-# PROD
+  # PROD
   pacmusic-prod-1:
     image: "${APP_IMAGE}:${APP_TAG}"
     container_name: pacmusic-prod-1
@@ -79,7 +79,9 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/sites-enabled:/etc/nginx/sites-enabled:ro
       - ./nginx/sites-available:/etc/nginx/sites-available:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
       - /etc/letsencrypt:/etc/letsencrypt
+      - /var/log/nginx:/var/log/nginx
     network_mode: host
     depends_on:
       - certbot
@@ -90,7 +92,8 @@ services:
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
       - /var/lib/letsencrypt:/var/lib/letsencrypt
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 6h; done;'"
+      - /var/www/certbot:/var/www/certbot
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'
     networks:
       - pacmusic-network
 
